@@ -3,21 +3,19 @@
 #include "STOMPWebSocketMessage.h"
 #include "IStompMessage.h"
 
-void USTOMPWebSocketMessage::Ack(const TMap<FName, FString>& Header, const FSTOMPRequestCompleted& CompletionCallback)
+void USTOMPWebSocketMessage::Ack(const TMap<FName, FString> &Header, const FSTOMPRequestCompleted &CompletionCallback)
 {
-	MyMessage->Ack(Header, FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString& Error)->void {
-		CompletionCallback.Execute(bSuccess, Error);
-	}));
+	MyMessage->Ack(Header, FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString &Error) -> void
+																{ CompletionCallback.Execute(bSuccess, Error); }));
 }
 
-void USTOMPWebSocketMessage::Nack(const TMap<FName, FString>& Header, const FSTOMPRequestCompleted& CompletionCallback)
+void USTOMPWebSocketMessage::Nack(const TMap<FName, FString> &Header, const FSTOMPRequestCompleted &CompletionCallback)
 {
-	MyMessage->Nack(Header, FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString& Error)->void {
-		CompletionCallback.Execute(bSuccess, Error);
-	}));
+	MyMessage->Nack(Header, FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString &Error) -> void
+																 { CompletionCallback.Execute(bSuccess, Error); }));
 }
 
-const TMap<FName, FString>& USTOMPWebSocketMessage::GetHeader() const
+const TMap<FName, FString> &USTOMPWebSocketMessage::GetHeader() const
 {
 	return MyMessage->GetHeader();
 }

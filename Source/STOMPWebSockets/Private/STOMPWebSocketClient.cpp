@@ -1,6 +1,5 @@
 // Copyright 2020 Richard W. Van Tassel. All Rights Reserved.
 
-
 #include "STOMPWebSocketClient.h"
 #include "WebSocketsModule.h"
 #include "STOMPWebSocketMessage.h"
@@ -23,19 +22,9 @@ void USTOMPWebSocketClient::BeginPlay()
 	Super::BeginPlay();
 }
 
-void USTOMPWebSocketClient::SetUrl(FString NewUrl)
-{
-	Url = NewUrl;
-}
-
 const FString USTOMPWebSocketClient::GetUrl()
 {
 	return Url;
-}
-
-void USTOMPWebSocketClient::SetAuthToken(FString NewAuthToken)
-{
-	AuthToken = NewAuthToken;
 }
 
 const FString USTOMPWebSocketClient::GetAuthToken()
@@ -44,7 +33,7 @@ const FString USTOMPWebSocketClient::GetAuthToken()
 }
 
 // Called every frame
-void USTOMPWebSocketClient::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void USTOMPWebSocketClient::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
@@ -52,7 +41,7 @@ void USTOMPWebSocketClient::TickComponent(float DeltaTime, ELevelTick TickType, 
 /**
  * Initialize client (locks in URL and authtoken)
  */
-void USTOMPWebSocketClient::BuildClient()
+void USTOMPWebSocketClient::BuildClient(FString NewUrl, FString NewAuthToken)
 {
 	if (StompClient.IsValid())
 	{
@@ -64,14 +53,16 @@ void USTOMPWebSocketClient::BuildClient()
 		StompClient->OnConnected().Clear();
 		StompClient->OnConnectionError().Clear();
 		StompClient->OnError().Clear();
-		StompClient->OnClosed().Clear();	
+		StompClient->OnClosed().Clear();
 
 		delete StompClient.Get();
 	}
 
-	
-	FStompModule* stompModule = &FStompModule::Get();
-	StompClient = stompModule->CreateClient(Url, AuthToken);
+	FStompModule *stompModule = &FStompModule::Get();
+	Url = NewUrl;
+	AuthToken = NewAuthToken;
+
+	StompClient = stompModule->CreateClient(NewUrl, NewAuthToken);
 
 	StompClient->OnConnected().AddUObject(this, &USTOMPWebSocketClient::HandleOnConnected);
 	StompClient->OnConnectionError().AddUObject(this, &USTOMPWebSocketClient::HandleOnConnectionError);
@@ -79,14 +70,13 @@ void USTOMPWebSocketClient::BuildClient()
 	StompClient->OnClosed().AddUObject(this, &USTOMPWebSocketClient::HandleOnClosed);
 }
 
-
 /**
-* Initiate a client connection to the server.
-* Use this after setting up event handlers or to reconnect after connection errors.
-*
-* @param Header custom headers to send with the initial CONNECT command.
-*/
-void USTOMPWebSocketClient::Connect(const TMap<FName, FString>& Header)
+ * Initiate a client connection to the server.
+ * Use this after setting up event handlers or to reconnect after connection errors.
+ *
+ * @param Header custom headers to send with the initial CONNECT command.
+ */
+void USTOMPWebSocketClient::Connect(const TMap<FName, FString> &Header)
 {
 	StompClient->Connect(Header);
 }
@@ -96,17 +86,18 @@ void USTOMPWebSocketClient::Connect(const TMap<FName, FString>& Header)
  *
  * @param Header custom headers to send with the DISCONNECT command.
  */
-void USTOMPWebSocketClient::Disconnect(const TMap<FName, FString>& Header)
+void USTOMPWebSocketClient::Disconnect(const TMap<FName, FString> &Header)
 {
 	StompClient->Disconnect(Header);
 }
 
 /**
  * Inquire if this instance is connected to a server.
+ * safe function
  */
 const bool USTOMPWebSocketClient::IsConnected()
 {
-	return StompClient->IsConnected();
+	return StompClient.IsValid() ? StompClient->IsConnected() : false;
 }
 
 /**
@@ -116,21 +107,18 @@ const bool USTOMPWebSocketClient::IsConnected()
  * @param CompletionCallback Delegate called when the request has been acknowledged by the server or if there is an error.
  * @return a handle to the active subscription. Can be passed to Unsubscribe to unsubscribe from the end point.
  */
-FString USTOMPWebSocketClient::Subscribe(const FString& Destination, const FSTOMPSubscriptionEvent& EventCallback, const FSTOMPRequestCompleted& CompletionCallback)
+FString USTOMPWebSocketClient::Subscribe(const FString &Destination, const FSTOMPSubscriptionEvent &EventCallback, const FSTOMPRequestCompleted &CompletionCallback)
 {
-	return StompClient->Subscribe(Destination, 
-		FStompSubscriptionEvent::CreateLambda([this, EventCallback](const IStompMessage& Message)->void {
+	return StompClient->Subscribe(Destination,
+								  FStompSubscriptionEvent::CreateLambda([this, EventCallback](const IStompMessage &Message) -> void
+																		{
 			USTOMPWebSocketMessage* msg = NewObject<USTOMPWebSocketMessage>(this);
 			msg->MyMessage = &Message;
 			EventCallback.ExecuteIfBound(msg);
-			msg->ConditionalBeginDestroy();
-		}),
-		FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString& Error)->void {
-			CompletionCallback.ExecuteIfBound(bSuccess, Error);
-		})
-	);
+			msg->ConditionalBeginDestroy(); }),
+								  FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString &Error) -> void
+																	   { CompletionCallback.ExecuteIfBound(bSuccess, Error); }));
 }
-
 
 /**
  * Unsubscribe from an event
@@ -138,13 +126,11 @@ FString USTOMPWebSocketClient::Subscribe(const FString& Destination, const FSTOM
  * @param CompletionCallback Delegate called when the request has been acknowledged by the server or if there is an error.
  * @param ResponseCallback Delegate called when the request has been completed.
  */
-void USTOMPWebSocketClient::Unsubscribe(FString Subscription, const FSTOMPRequestCompleted& CompletionCallback)
+void USTOMPWebSocketClient::Unsubscribe(FString Subscription, const FSTOMPRequestCompleted &CompletionCallback)
 {
 	StompClient->Unsubscribe(Subscription,
-		FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString& Error)->void {
-			CompletionCallback.ExecuteIfBound(bSuccess, Error);
-		})
-	);
+							 FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString &Error) -> void
+																  { CompletionCallback.ExecuteIfBound(bSuccess, Error); }));
 }
 
 /**
@@ -154,32 +140,30 @@ void USTOMPWebSocketClient::Unsubscribe(FString Subscription, const FSTOMPReques
  * @param Header Custom header values to send along with the data.
  * @param CompletionCallback Delegate called when the request has been acknowledged by the server or if there is an error.
  */
-void USTOMPWebSocketClient::SendBinary(const FString& Destination, const TArray<uint8>& Body, const TMap<FName, FString>& Header, 
-	const FSTOMPRequestCompleted& CompletionCallback)
+void USTOMPWebSocketClient::SendBinary(const FString &Destination, const TArray<uint8> &Body, const TMap<FName, FString> &Header,
+									   const FSTOMPRequestCompleted &CompletionCallback)
 {
 	StompClient->Send(Destination, Body, Header,
-		FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString& Error)->void {
-			CompletionCallback.ExecuteIfBound(bSuccess, Error);
-		})
-	);
+					  FStompRequestCompleted::CreateLambda([CompletionCallback](bool bSuccess, const FString &Error) -> void
+														   { CompletionCallback.ExecuteIfBound(bSuccess, Error); }));
 }
 
-void USTOMPWebSocketClient::HandleOnConnected(const FString& ProtocolVersion, const FString& SessionId, const FString& ServerString) 
+void USTOMPWebSocketClient::HandleOnConnected(const FString &ProtocolVersion, const FString &SessionId, const FString &ServerString)
 {
 	this->OnConnected.Broadcast(ProtocolVersion, SessionId, ServerString);
 }
 
-void USTOMPWebSocketClient::HandleOnConnectionError(const FString& Error)
+void USTOMPWebSocketClient::HandleOnConnectionError(const FString &Error)
 {
 	this->OnConnectionError.Broadcast(Error);
 }
 
-void USTOMPWebSocketClient::HandleOnError(const FString& Error)
+void USTOMPWebSocketClient::HandleOnError(const FString &Error)
 {
 	this->OnError.Broadcast(Error);
 }
 
-void USTOMPWebSocketClient::HandleOnClosed(const FString& Reason)
+void USTOMPWebSocketClient::HandleOnClosed(const FString &Reason)
 {
 	this->OnClosed.Broadcast(Reason);
 }

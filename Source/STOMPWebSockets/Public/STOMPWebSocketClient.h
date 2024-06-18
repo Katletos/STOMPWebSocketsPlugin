@@ -6,21 +6,20 @@
 #include "Components/ActorComponent.h"
 #include "STOMPWebSocketClient.generated.h"
 
-DECLARE_DYNAMIC_DELEGATE_TwoParams(FSTOMPRequestCompleted, bool, bSuccess, const FString&, Error);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FSTOMPSubscriptionEvent, class USTOMPWebSocketMessage*, Message);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FSTOMPRequestCompleted, bool, bSuccess, const FString &, Error);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FSTOMPSubscriptionEvent, class USTOMPWebSocketMessage *, Message);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FSTOMPConnectedEvent, const FString&, ProtocolVersion, const FString&, SessionId, const FString&, ServerString);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSTOMPConnectionErrorEvent, const FString&, Error);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSTOMPErrorEvent, const FString&, Error);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSTOMPClosedEvent, const FString&, Reason);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FSTOMPConnectedEvent, const FString &, ProtocolVersion, const FString &, SessionId, const FString &, ServerString);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSTOMPConnectionErrorEvent, const FString &, Error);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSTOMPErrorEvent, const FString &, Error);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSTOMPClosedEvent, const FString &, Reason);
 
-
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent, DisplayName = "STOMP Web Socket Client")) 
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent, DisplayName = "STOMP Web Socket Client"))
 class STOMPWEBSOCKETS_API USTOMPWebSocketClient : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	// Sets default values for this component's properties
 	USTOMPWebSocketClient();
 
@@ -29,44 +28,40 @@ protected:
 	virtual void BeginPlay() override;
 
 	TSharedPtr<class IStompClient> StompClient;
-private:
-	//Wrappers for client events
-	void HandleOnConnected(const FString& ProtocolVersion, const FString& SessionId, const FString& ServerString);
-	void HandleOnConnectionError(const FString& Error);
-	void HandleOnError(const FString& Error);
-	void HandleOnClosed(const FString& Reason);
 
-	UPROPERTY(BlueprintSetter = SetUrl, BlueprintGetter = GetUrl, Category = "Online|STOMP over Websockets")
+private:
+	// Wrappers for client events
+	void HandleOnConnected(const FString &ProtocolVersion, const FString &SessionId, const FString &ServerString);
+	void HandleOnConnectionError(const FString &Error);
+	void HandleOnError(const FString &Error);
+	void HandleOnClosed(const FString &Reason);
+
+	UPROPERTY(BlueprintGetter = GetUrl, Category = "Online|STOMP over Websockets")
 	FString Url;
-	UPROPERTY(BlueprintSetter = SetAuthToken, BlueprintGetter = GetAuthToken, Category = "Online|STOMP over Websockets")
+	UPROPERTY(BlueprintGetter = GetAuthToken, Category = "Online|STOMP over Websockets")
 	FString AuthToken;
-public:	
+
+public:
 	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	
-	UFUNCTION(BlueprintCallable, BlueprintSetter, Category = "Online|STOMP over Websockets")
-	void SetUrl(FString NewUrl);
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintGetter, Category = "Online|STOMP over Websockets")
 	const FString GetUrl();
-
-	UFUNCTION(BlueprintCallable, BlueprintSetter, Category = "Online|STOMP over Websockets")
-	void SetAuthToken(FString NewAuthToken);
 
 	UFUNCTION(BlueprintCallable, BlueprintGetter, Category = "Online|STOMP over Websockets")
 	const FString GetAuthToken();
 
 	UFUNCTION(BlueprintCallable, Category = "Online|STOMP over Websockets")
-	void BuildClient();
-	
+	void BuildClient(FString NewUrl, FString NewAuthToken);
+
 	/**
 	 * Initiate a client connection to the server.
 	 * Use this after setting up event handlers or to reconnect after connection errors.
 	 *
 	 * @param Header custom headers to send with the initial CONNECT command.
 	 */
-	UFUNCTION(BlueprintCallable, meta=(AutoCreateRefTerm="Header"), Category="Online|STOMP over Websockets")
-	void Connect(const TMap<FName, FString>& Header);
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Header"), Category = "Online|STOMP over Websockets")
+	void Connect(const TMap<FName, FString> &Header);
 
 	/**
 	 * Disconnect from the server.
@@ -74,7 +69,7 @@ public:
 	 * @param Header custom headers to send with the DISCONNECT command.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Header"), Category = "Online|STOMP over Websockets")
-	void Disconnect(const TMap<FName, FString>& Header);
+	void Disconnect(const TMap<FName, FString> &Header);
 
 	/**
 	 * Inquire if this instance is connected to a server.
@@ -90,7 +85,7 @@ public:
 	 * @return a handle to the active subscription. Can be passed to Unsubscribe to unsubscribe from the end point.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "CompletionCallback"), Category = "Online|STOMP over Websockets")
-	FString Subscribe(const FString& Destination, const FSTOMPSubscriptionEvent& EventCallback, const FSTOMPRequestCompleted& CompletionCallback);
+	FString Subscribe(const FString &Destination, const FSTOMPSubscriptionEvent &EventCallback, const FSTOMPRequestCompleted &CompletionCallback);
 
 	/**
 	 * Unsubscribe from an event
@@ -99,7 +94,7 @@ public:
 	 * @param ResponseCallback Delegate called when the request has been completed.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "CompletionCallback"), Category = "Online|STOMP over Websockets")
-	void Unsubscribe(FString Subscription, const FSTOMPRequestCompleted& CompletionCallback);
+	void Unsubscribe(FString Subscription, const FSTOMPRequestCompleted &CompletionCallback);
 
 	/**
 	 * Emit an event to a destination
@@ -109,11 +104,11 @@ public:
 	 * @param CompletionCallback Delegate called when the request has been acknowledged by the server or if there is an error.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Header,CompletionCallback"), Category = "Online|STOMP over Websockets")
-	void SendString(const FString& Destination, const FString& Body, const TMap<FName, FString>& Header, const FSTOMPRequestCompleted& CompletionCallback)
+	void SendString(const FString &Destination, const FString &Body, const TMap<FName, FString> &Header, const FSTOMPRequestCompleted &CompletionCallback)
 	{
 		FTCHARToUTF8 Convert(*Body);
 		TArray<uint8> Encoded;
-		Encoded.Append((uint8*)Convert.Get(), Convert.Length());
+		Encoded.Append((uint8 *)Convert.Get(), Convert.Length());
 		SendBinary(Destination, Encoded, Header, CompletionCallback);
 	}
 
@@ -125,7 +120,7 @@ public:
 	 * @param CompletionCallback Delegate called when the request has been acknowledged by the server or if there is an error.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Header,CompletionCallback"), Category = "Online|STOMP over Websockets")
-	void SendBinary(const FString& Destination, const TArray<uint8>& Body, const TMap<FName, FString>& Header, const FSTOMPRequestCompleted& CompletionCallback);
+	void SendBinary(const FString &Destination, const TArray<uint8> &Body, const TMap<FName, FString> &Header, const FSTOMPRequestCompleted &CompletionCallback);
 
 	/**
 	 * Delegate called when a connection been established successfully.
@@ -136,7 +131,6 @@ public:
 	 */
 	UPROPERTY(BlueprintAssignable)
 	FSTOMPConnectedEvent OnConnected;
-
 
 	/**
 	 * Delegate called when a connection could not be established.
